@@ -101,7 +101,7 @@ public class TextArea{
                 String inputText = editableTextArea.getText();
                 String parsed = "";
 				try {
-					parsed = converted.MipResult(inputText);
+					parsed = new MipsResult().MipResult(inputText);
 				} catch (Exception e1) {
 					parsed = "ERROR: Look At console for more details";
                 	nonEditableTextArea.setForeground(Color.red);

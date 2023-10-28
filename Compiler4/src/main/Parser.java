@@ -87,9 +87,11 @@ public class Parser {
 		kind.put("public", "function");
 		kind.put("private", "function");
 		kind.put("protected", "function");
+		kind.put("static", "function");
 		kind.put("if", "condition");
 		kind.put("for", "loop");
 		kind.put("}", "endOfLine");
+		kind.put("System.out.println", "print");
 		return kind;
 	}
 	
@@ -123,7 +125,7 @@ public class Parser {
 		ExpressionSyntax.add("public static void");
 		ExpressionSyntax.add("public void");
 		ExpressionSyntax.add("void");
-		
+		ExpressionSyntax.add("static void");
 		//for private methods
 		ExpressionSyntax.add("protected static void");
 		ExpressionSyntax.add("protected void");
@@ -134,7 +136,6 @@ public class Parser {
 		
 		return ExpressionSyntax;
 	}
-	
 	private static void allowedDeclaredSyntax(String VariableSyntax){
 		
 		//for integer data types
@@ -143,7 +144,7 @@ public class Parser {
 		
 		allowedDeclaredSyntax.add("String " + VariableSyntax + " =");
 		allowedDeclaredSyntax.add(VariableSyntax + " =");
-
+		allowedDeclaredSyntax.add(VariableSyntax +"();");
 	}
 	
 	private Set<String> allowedLoopSyntax(){
@@ -151,6 +152,7 @@ public class Parser {
 		ExpressionSyntax.add("for ( int");
 		return ExpressionSyntax;
 	}
+	
 	public static void parseAndConvert(String input) throws Exception {
 		String[] inputtoArr = input.split("\\r?\\n|\\r");
 		if (inputtoArr.length == 1) {
@@ -171,20 +173,35 @@ public class Parser {
 					System.out.println("Evaluating Expressions: ");
 					lexedLine.remove(lexedLine.size() - 1);
 					char operation = checkDeclareSyntax(lexedLine);
-					if (operation != ' ') {
-						lexedLine.add("declarerOperation");
-					}else {
+					System.out.println(operation);
+					if (operation == ' ') {
 						lexedLine.add("declarer");
+					}else if(operation == 'f') {
+						lexedLine.add("functionCall");
+					}else {
+						lexedLine.add("declareOperation");
 					}
 				}else if (lexedLine.get(lexedLine.size() - 1).equals("condition")) {
 					lexedLine.remove(lexedLine.size() - 1);
 					checkConditionSyntax(lexedLine);
+					lexedLine.add("conditional");
 				}else if (lexedLine.get(lexedLine.size() - 1).equals("loop")) {
 					System.out.println("Checking loop");
 					lexedLine.remove(lexedLine.size() - 1);
 					lexedLine.add(evaluateLoopExpression(lexedLine));
 					lexedLine.add("loop");
+				}else if (lexedLine.get(lexedLine.size() - 1).equals("print")) {
+					lexedLine.remove(lexedLine.size() - 1);
+					evaluatePrintExpression(lexedLine);
+					lexedLine.add("print");
 				}
+				//convert to string[]
+				String[] line = new String[lexedLine.size()];
+				
+				for (int i = 0; i < line.length; i++) {
+					line[i] = lexedLine.get(i);
+				}
+				fileParsed.add(line);
 				System.out.println(lexedLine);
 			}
 				
@@ -193,6 +210,35 @@ public class Parser {
 	}
 	
 	
+	
+	private static void evaluatePrintExpression(ArrayList<String> lexedLine) throws Exception{
+		int position = 1;
+		
+		if(!lexedLine.get(position).equals("("))
+			throw new Exception("ERROR: Invalid Print Syntax Opening: ");
+		if(!lexedLine.get(lexedLine.size() - 1).equals(";"))
+			throw new Exception("ERROR: Illegal Closing Syntax for a print statement");
+		
+		position++;
+		String innerStatement = "";
+		while(position < lexedLine.size()) {
+			if(lexedLine.get(position).equals(")")) break;
+			
+			innerStatement += lexedLine.get(position);
+			position++;
+			
+		}
+		System.out.println(innerStatement + " Hello");
+		if(position != lexedLine.size() - 2)
+			throw new Exception("ERROR: Print Statement Hasn't reached end of line <" + lexedLine + ">");
+		
+		if (innerStatement.equals(""))
+			System.out.println("Printed new line");
+		else{
+			System.out.println("Printing value: ");
+			System.out.println(innerStatement);
+		}
+	}
 	
 	private static ArrayList<String> Lexer(String split) throws Exception {
 		//since we wont know what the string would be like after white space removal
@@ -204,8 +250,8 @@ public class Parser {
 		while (i < split.length()) {
 			if(Character.isWhitespace(split.charAt(i))) {
 				while (i < split.length() && Character.isWhitespace(split.charAt(i))) i++;
-			}else if(Character.isLetterOrDigit(split.charAt(i))) {
-				while(i < split.length() && Character.isLetterOrDigit(split.charAt(i))){
+			}else if(Character.isLetterOrDigit(split.charAt(i)) || split.charAt(i) == '.') {
+				while(i < split.length() && Character.isLetterOrDigit(split.charAt(i)) || split.charAt(i) == '.'){
 					potentialCommandOrOperator += Character.toString(split.charAt(i));
 					i++;
 				}
@@ -405,9 +451,25 @@ public class Parser {
 		char operatorType = ' ';
 		while(position < line.size()){
 			allowedDeclaredSyntax(line.get(position));
-			if (line.get(position).equals("="))break;
+			if (line.get(position).equals("=") || line.get(position).equals("("))break;
 			assumedVariableName += line.get(position);
 			position ++;
+		} 
+		// first check if the declared value is a function call
+		if(position < line.size() && line.get(position).equals("(")){
+			System.out.println("here");
+			String bracket = "";
+			while(position < line.size()) {
+				allowedDeclaredSyntax(line.get(position));
+				bracket += line.get(position);
+				position ++;
+			}
+			System.out.println(assumedVariableName + bracket);
+			if(position == line.size() && allowedDeclaredSyntax.contains(assumedVariableName + bracket)) {
+				if(!declaredFunction.contains(assumedVariableName))
+					throw new Exception("ERROR: Invalid function call <" + assumedVariableName + ">");
+				return 'f';
+			}
 		}
 		if(position < line.size() &&!line.get(position).equals("="))
 			throw new Exception ("ERROR: Unknown Assignment Type <" + line.get(position) + ">");
@@ -434,7 +496,7 @@ public class Parser {
 			evaluateStringExpression(assumedVariableName, rightExpression);
 		}else {
 			if (rightExpression.charAt(0) != '"') {
-				if(!integerValues.containsKey(assumedVariableName))
+				if(!integerValues.containsKey(assumedVariableName) && !stringValues.containsKey(assumedVariableName))
 					throw new Exception("ERROR: Tried to use a variable before assignment <" + assumedVariableName + ">");
 				operatorType = evaluateIntegerExpression(assumedVariableName, rightExpression);
 			}

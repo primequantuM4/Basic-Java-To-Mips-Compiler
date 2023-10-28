@@ -14,6 +14,9 @@ import javax.swing.JTextArea;
 public class Compiler{
 
 	public static void main(String[] args) {
+		System.out.println((int)Math.pow(2, 31));
+		long trail = Long.valueOf("135678909876545678");
+		System.out.println(trail);
 		TextArea  textArea = new TextArea();
 		textArea.setUpWindowAndFrame();
 	}
